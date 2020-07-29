@@ -8,9 +8,9 @@ console.log("http://localhost:8080/");
 const juejin =
   "https://xiaoce-timeline-api-ms.juejin.im/v1/getListByLastTime?pageNum=1";
 for await (const req of s) {
-  // 将请求体转成
   const data: Uint8Array = await Deno.readAll(req.body);
   const body = decoder.decode(data) ? JSON.parse(decoder.decode(data)) : {};
+  console.log("[body]", body);
   if (req.url === "/") {
     req.respond({ body: handler(req) });
   } else if (req.url === "/books") {
