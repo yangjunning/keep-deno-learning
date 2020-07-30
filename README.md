@@ -109,7 +109,7 @@ app.use((ctx) => {
   ctx.response.body = "Hello Oak!";
 });
 
-console.log(`🌳 oak server running at http://127.0.0.1:8001/ 🌳`)
+console.log(`🦕 oak server running at http://127.0.0.1:8001/ 🦕`)
 
 await app.listen("127.0.0.1:8001");
 ```
@@ -117,6 +117,38 @@ await app.listen("127.0.0.1:8001");
 执行 `deno run --allow-net server.ts`开启服务，并使用 VSCode REST Client 测试：
 
 ![](https://i.loli.net/2020/07/30/8q3AKy4EVLBb6Q1.png)
+
+编写一个拥有两个自定义中间件的Demo:
+
+```ts
+import { Application } from "https://deno.land/x/oak/mod.ts";
+
+const app = new Application();
+
+// Logger
+app.use(async (ctx, next) => {
+  await next();
+  const rt = ctx.response.headers.get("X-Response-Time");
+  console.log(`${ctx.request.method} ${ctx.request.url} - ${rt}`);
+});
+
+// Timing
+app.use(async (ctx, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  ctx.response.headers.set("X-Response-Time", `${ms}ms`);
+});
+
+// Hello World!
+app.use((ctx) => {
+  ctx.response.body = "Hello World!";
+});
+
+console.log(`🦕 oak server running at http://127.0.0.1:8889/ 🦕`);
+
+await app.listen({ port: 8889 });
+```
 
 ### [servest](https://github.com/keroxp/servest)
 

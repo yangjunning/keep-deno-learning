@@ -1,12 +1,27 @@
-import "https://deno.land/x/denv/mod.ts";
-import { Application } from "./deps.ts";
+import { Application } from "https://deno.land/x/oak/mod.ts";
 
 const app = new Application();
 
-app.use((ctx) => {
-  ctx.response.body = "Hello world!";
+// Logger
+app.use(async (ctx, next) => {
+  await next();
+  const rt = ctx.response.headers.get("X-Response-Time");
+  console.log(`${ctx.request.method} ${ctx.request.url} - ${rt}`);
 });
 
-console.log(`🌳 oak server running at http://127.0.0.1:8001/ 🌳`);
+// Timing
+app.use(async (ctx, next) => {
+  const start = Date.now();
+  await next();
+  const ms = Date.now() - start;
+  ctx.response.headers.set("X-Response-Time", `${ms}ms`);
+});
 
-await app.listen("127.0.0.1:8001");
+// Hello World!
+app.use((ctx) => {
+  ctx.response.body = "Hello World!";
+});
+
+console.log(`🦕 oak server running at http://127.0.0.1:8889/ 🦕`);
+
+await app.listen({ port: 8889 });
