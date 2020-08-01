@@ -84,11 +84,11 @@ for await (const req of s) {
 
 截止2020年7月30日，GitHub比较热门的 HTTP Server 框架有5个，分别是 oak、servest、deno-drash、abc、pogo（排名分先后）。
 
-起初我也和大家一样面对这么多框架不知如何选，直到使用了[Github Stars](https://github-stars.socode.pro/) 对比了他们的star趋势后，毫无犹豫的选择了 oak。
+起初我也和大家一样面对这么多框架不知如何选，直到使用了[Star History](https://star-history.t9t.io/) 对比了他们的star趋势后，毫无犹豫的选择了 oak。
 
 但是本着技术探究的角度，我们还是分别体验一下这5个框架的 Hello World，然后再利用oak进行实战演习。
 
-<img src="https://i.loli.net/2020/07/30/eutq8cLTRni5W6K.png" style="zoom:35%;" />
+[<img src="https://i.loli.net/2020/08/01/w6FZXsfHQ4gydcK.png" style="zoom:45%;" />](https://star-history.t9t.io/#oakserver/oak&keroxp/servest&drashland/deno-drash&zhmushan/abc&sholladay/pogo)
 
 ### [Oak](https://github.com/oakserver/oak)
 
@@ -290,15 +290,13 @@ console.log(Deno.env.get("MADE_UP_VAR"));  // outputs "Undefined"
 `deno bundle` 自带打包和 tree shaking 功能，可以将我们的代码打包成单文件
 
 ```shell
-#!/bin/sh
-deno bundle ./src/index.ts ./dist/index.js
+$ deno bundle ./src/index.ts ./dist/index.js
 ```
 
 `deno install` 可以将我们的代码生成可执行文件进行直接使用
 
 ```shell
-#!/bin/sh
-deno install --allow-read  --allow-net --allow-write -n youngjuning ./src/index.ts
+$ deno install --allow-read  --allow-net --allow-write -n youngjuning ./src/index.ts
 ```
 
 deno的可执行文件默认都放在 `/Users/yangjunning/.deno/bin/` 目录下，我们需要将它注册到环境变量中:
