@@ -259,11 +259,64 @@ app.listen({ port: 8899 });
 
 ### [deno-drash](https://github.com/drashland/deno-drash)
 
+```ts
+import { Drash } from "https://deno.land/x/drash@v1.x/mod.ts";
+
+class HomeResource extends Drash.Http.Resource {
+  static paths = ["/"];
+  public GET() {
+    this.response.body = "Hello World!";
+    return this.response;
+  }
+}
+
+const server = new Drash.Http.Server({
+  response_output: "text/html",
+  resources: [HomeResource],
+});
+
+server.run({
+  hostname: "127.0.0.1",
+  port: 8888,
+});
+
+console.log(`🦕 drash server running at http://127.0.0.1:8888/ 🦕`);
+```
+
 ### [abc](https://github.com/zhmushan/abc)
+
+```ts
+import { Application } from "https://deno.land/x/abc@v1/mod.ts";
+
+const app = new Application();
+
+app.get("/hello", () => {
+  return "Hello, Abc!";
+});
+
+app.start({ port: 8888 });
+
+console.log(`🦕 abc server running at http://127.0.0.1:8888/ 🦕`);
+```
 
 ### [Pogo](https://github.com/sholladay/pogo)
 
 Pogo是用于编写Web服务器和应用程序的易于使用，安全且富有表现力的框架，它的灵感来自 hapi。
+
+```ts
+import React from "https://dev.jspm.io/react";
+import pogo from "https://deno.land/x/pogo/main.ts";
+
+const server = pogo.server({ port: 8888 });
+
+server.router.get("/", () => {
+  return <h1>Hello, world!</h1>;
+});
+
+server.start();
+
+console.log(`🦕 pogo server running at http://127.0.0.1:8888/ 🦕`);
+```
 
 ## 插件推荐
 
@@ -304,6 +357,169 @@ deno的可执行文件默认都放在 `/Users/yangjunning/.deno/bin/` 目录下�
 ```sh
 $ export PATH="/Users/yangjunning/.deno/bin:$PATH"
 ```
+
+## mongodb & docker
+
+### 初始配置
+
+```sh
+# 不带权限校验的模式开启 mongo
+$ docker run -d \
+  --restart always \
+  --name mongo \
+  -v mongo_data:/data/db \
+  -p 27017:27017 \
+  mongo \
+# mongodb 默认不开启验证，只要能访问服务器，即可直接登录，所以需要配置一下账号密码进行校验。
+$ docker exec -it mongo mongo admin
+# 创建超级管理员
+> db.createUser({ user: "root" , pwd: "123456", roles: ["root"]});
+Successfully added user: {
+   "user" : "root",
+   "roles" : ["root"]
+}
+# 尝试使用上面创建的用户信息进行连接。
+> db.auth("root","123456")
+1
+# 创建一个名为 admin，密码为 123456 的用户。
+> db.createUser({ user: "admin", pwd: "123456", roles:["userAdminAnyDatabase", "dbAdminAnyDatabase", "readWriteAnyDatabase"]});
+Successfully added user: {
+   "user": "admin",
+   "roles": [
+   {
+      "role": "userAdminAnyDatabase",
+      "db": "admin"
+   }
+  ]
+}
+# 尝试使用上面创建的用户信息进行连接。
+> db.auth("admin","123456")
+1
+```
+
+### 启动 mongodb
+
+```sh
+$ docker run -d \
+  --restart always \
+  --name mongo \
+  -v mongo_data:/data/db \
+  -p 27017:27017 \
+  mongo \
+  --auth
+```
+
+## Docker 部署
+
+### deps.ts
+
+```ts
+export { Application } from "https://deno.land/x/oak/mod.ts";
+```
+
+### app.ts
+
+```ts
+import "https://deno.land/x/denv/mod.ts";
+import { Application } from "./deps.ts";
+
+const APP_NAME = Deno.env.get("APP_NAME") || 'oak'
+const APP_PORT = Deno.env.get("APP_PORT") || 1994
+const EXPORT = Deno.env.get("APP_HOST") || 1998
+const APP_HOST = Deno.env.get("APP_HOST") || '127.0.0.1'
+
+const app = new Application();
+
+// Hello World!
+app.use((ctx) => {
+  ctx.response.body = "Hello World!";
+});
+
+console.log(`🦕 ${APP_NAME} running at http://${APP_HOST}:${EXPORT}/ 🦕`);
+
+await app.listen({ port: Number(APP_PORT) });
+```
+
+### .env
+
+使用 `.env` 是为了在脚本和程序间共享变量，方便之后统一修改。
+
+```
+APP_HOST_NAME=127.0.0.1
+APP_NAME=oak-server
+APP_PORT=1994
+EXPORT=1998
+```
+
+### Dockerfile
+
+```s
+FROM hayd/alpine-deno
+
+# The port that your application listens to.
+EXPOSE 1994
+
+WORKDIR /app
+
+# Prefer not to run as root.
+USER deno
+
+# Cache the dependencies as a layer (the following two steps are re-run only when deps.ts is modified).
+# Ideally cache deps.ts will download and compile _all_ external files used in main.ts.
+COPY deps.ts .
+RUN deno cache deps.ts
+
+# These steps will be re-run upon each file change in your working directory:
+ADD . .
+# Compile the main app so that it doesn't need to be compiled each startup/entry.
+RUN deno cache app.ts
+
+CMD ["run", "--allow-read", "--allow-env", "--allow-net", "app.ts"]
+```
+
+### publish.sh
+
+```sh
+#!/bin/bash
+ENV_FILE=$(cd ./$(dirname ${BASH_SOURCE[0]}); pwd )
+source $ENV_FILE/.env
+_APP_NAME=$APP_NAME
+APP_NAME=${_APP_NAME:-"deno_server"}
+
+# 停止已有容器
+docker rm -f ${APP_NAME}
+docker rm -f mongo-oak
+
+# 启动 mongo 容器
+docker run -itd \
+  --restart always \
+  --name mongo-oak \
+  -v mongo_data_oak:/data/db \
+  -p 27017:27017 \
+  --auth
+  mongo
+
+# 构建新镜像
+docker build -t ${APP_NAME} .
+
+# 启动新容器
+docker run -itd \
+  --restart always \
+  --link mongo-oak:mongo \
+  -p 1998:1994 \
+  --name ${APP_NAME} \
+  ${APP_NAME}
+```
+
+### mongodb 设置
+
+### 使用
+
+1、给脚本赋予可执行权限：`chmod a+x ./publish.sh`
+
+2、构建镜像并发布容器：`./publish.sh`
+
+3、
 
 ## 参考
 
